@@ -12,6 +12,7 @@ from .config import config as bfwconfig
 
 def init(config):
     merge_config(config, bfwconfig)
+    set_store_config(config)
     try:
         selector = config['selector']
     except KeyError: # twanager mode
@@ -33,7 +34,19 @@ def init(config):
     selector.add('/{wiki_name:segment}', GET=web.wiki_home)
     selector.add('/{wiki_name:segment}/{page_name:segment}', GET=web.wiki_page)
 
+    # XXX: consider moving this to .config
     config['wikitext.type_render_map']['text/x-markdown'] = 'tiddlywebplugins.markdown'
+
+
+def set_store_config(config):
+    """
+    Establish a dist store of the configured store, with extras.
+    """
+    original_store = config['server_store']
+    config['server_store'] = ['tiddlywebplugins.diststore', {
+        'main': original_store,
+        'extras': config['bfw.extra_stores'],
+    }]
 
 
 def _error_handler(status, message):
