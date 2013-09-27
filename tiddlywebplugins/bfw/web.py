@@ -87,8 +87,8 @@ def user_home(environ, start_response):
         'create_page': _uri(environ, 'pages')
     }
     return _render_template(environ, start_response, 'user_home.html',
-            user=current_user, wikis=wikis,
-            contents=render_wikitext(tiddler, environ), uris=uris)
+            user=current_user, wikis=wikis, uris=uris,
+            contents=render_wikitext(tiddler, environ))
 
 
 def wiki_home(environ, start_response):
@@ -108,12 +108,14 @@ def wiki_page(environ, start_response):
                 page='%s/%s' % (wiki_name, page_name)))
 
     title = wiki_name if page_name == 'index' else page_name # XXX: undesirable?
+    tags = [(tag, _uri(environ, 'tags', tag)) for tag in sorted(tiddler.tags)]
     uris = {
         'edit': _uri(environ, 'editor', page='%s/%s' % (wiki_name, page_name)),
         'source': _uri(environ, 'bags', wiki_name, 'tiddlers', page_name)
     }
+
     return _render_template(environ, start_response, 'wiki_page.html',
-            title=title, page_title=page_name, uris=uris,
+            title=title, page_title=page_name, uris=uris, tags=tags,
             contents=render_wikitext(tiddler, environ))
 
 def editor(environ, start_response):

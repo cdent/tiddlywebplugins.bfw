@@ -7,6 +7,13 @@
 {% block body %}
 <article>
 	<h1>{{ page_title }}</h1>
+	<footer>
+		<ul class="tags">
+			{% for tag, uri in tags %}
+			<li><a href="{{ uri }}" rel="tag">{{ tag }}</a></li>
+			{% endfor %}
+		</ul>
+	</footer>
 	<ul class="controls">
 		<li><a href="{{ uris['edit'] }}">edit</a></li>
 	</ul>

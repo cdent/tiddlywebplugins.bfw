@@ -6,6 +6,7 @@ import tempfile
 import httplib2
 import wsgi_intercept
 
+from StringIO import StringIO
 from urllib import urlencode
 from wsgi_intercept import httplib2_intercept
 from pytest import raises
@@ -72,7 +73,6 @@ def test_assetcopy(): # XXX: does not belong here
     target_dir = os.path.join(TMPDIR, 'static_assets')
     # capture STDERR to avoid confusion -- XXX: might interefere with reporting - belongs into setup/teardown
     stderr = sys.stderr
-    from StringIO import StringIO
     sys.stderr = StringIO()
 
     with raises(SystemExit): # no directory provided
@@ -87,6 +87,33 @@ def test_assetcopy(): # XXX: does not belong here
         handle(['', 'assetcopy', target_dir])
 
     sys.stderr = stderr # restore
+
+
+def test_integration(): # XXX: does not belong here
+    bag = Bag('snippets')
+    STORE.put(bag)
+
+    tiddler = Tiddler('index', 'snippets')
+    tiddler.text = 'lipsum'
+    tiddler.tags = ['foo', 'bar']
+    STORE.put(tiddler)
+
+    response, content = _req('GET', '/tags/foo')
+    assert response.status == 200
+
+    response, content = _req('GET', '/tags/bar')
+    assert response.status == 200
+
+    # capture STDOUT -- XXX: might interefere with reporting - belongs into setup/teardown
+    stdout = sys.stdout
+    sys.stdout = StringIO()
+
+    handle(['', 'tags'])
+
+    sys.stdout.seek(0)
+    assert sys.stdout.read() == "foo\nbar\n"
+
+    sys.stdout = stdout # restore
 
 
 def test_root():
