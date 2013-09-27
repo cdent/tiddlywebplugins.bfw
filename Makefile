@@ -1,15 +1,15 @@
 .PHONY: server instance terminate dist test qtest remotes lint coverage clean
 
 server: terminate
-	./reloader ./ '^.*\.py$$' twanager server & \
+	cd dev_instance && export PYTHONPATH="../" && \
+			../reloader ../ '^.*\.py$$' 'twanager server' & \
 			echo $$! > .server.pid
 	sleep 0.5
 	touch tiddlywebplugins/__init__.py
 
 instance: remotes
 	./bfwinstance dev_instance
-	mv dev_instance/* ./
-	rm -rf dev_instance
+	ln -s ../tiddlywebplugins/templates/ dev_instance/
 
 terminate:
 	ps -o pgid -p `cat .server.pid` | tail -n1 | while read pgid; do \
