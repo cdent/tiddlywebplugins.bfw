@@ -118,6 +118,7 @@ def wiki_page(environ, start_response):
             title=title, page_title=page_name, uris=uris, tags=tags,
             contents=render_wikitext(tiddler, environ))
 
+
 def editor(environ, start_response):
     page = environ['tiddlyweb.query']['page'][0] # TODO: guard against missing parameter
     wiki_name, page_name = page.split('/') # TODO: validate
@@ -135,7 +136,8 @@ def editor(environ, start_response):
     }
     return _render_template(environ, start_response, 'editor.html', uris=uris,
             title=page, wiki_name=wiki_name, page_title=page_name,
-            contents=tiddler.text, notification=msg)
+            tagstr=', '.join(tiddler.tags), contents=tiddler.text,
+            notification=msg)
 
 
 @ensure_form_submission
@@ -159,9 +161,10 @@ def create_wiki(environ, start_response):
 
 @ensure_form_submission
 def put_page(environ, start_response):
-    wiki_name = environ['tiddlyweb.query']['wiki'][0]
-    title = environ['tiddlyweb.query']['title'][0] # TODO: validate
-    text = environ['tiddlyweb.query']['text'][0]
+    wiki_name, title, tags, text = [environ['tiddlyweb.query'][param][0]
+            for param in ['wiki', 'title', 'tags', 'text']]
+    # TODO: validate title
+    tags = [tag.strip() for tag in tags.split(',')]
     # TODO: parameter to only allow creation (for use in user home's quick creation UI)
 
     store = environ['tiddlyweb.store']
@@ -171,6 +174,7 @@ def put_page(environ, start_response):
 
     tiddler = Tiddler(title, bag.name)
     tiddler.type = 'text/x-markdown'
+    tiddler.tags = tags
     tiddler.text = text
     store.put(tiddler)
 

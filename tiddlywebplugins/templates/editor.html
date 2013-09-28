@@ -13,6 +13,9 @@
 <form action="{{ uris['put_page'] }}" method="post" class="pure-form">
 	<input type="hidden" name="wiki" value="{{ wiki_name }}">
 	<input type="hidden" name="title" value="{{ page_title}}">
+	<label>
+		tags: <input name="tags" value="{{ tagstr }}">
+	</label>
 	<textarea name="text" data-widearea="enable">{{ contents }}</textarea>
 	<input type="submit" class="pure-button pure-button-primary">
 </form>

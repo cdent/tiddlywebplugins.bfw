@@ -343,6 +343,7 @@ def test_page_creation_and_modification():
     data = {
         'wiki': 'foo',
         'title': 'Lipsum',
+        'tags': 'foo, bar, baz',
         'text': 'lorem ipsum'
     }
 
@@ -365,14 +366,20 @@ def test_page_creation_and_modification():
     assert response.status == 200
     assert response['content-type'] == 'text/html; charset=UTF-8'
     assert '<p>lorem ipsum</p>' in content
+    assert '>foo</a>' in content
+    assert '>bar</a>' in content
+    assert '>baz</a>' in content
 
     data['text'] = 'lorem ipsum\ndolor *sit* amet'
+    data['tags'] = 'hello,world'
     response, content = _req('POST', '/pages', urlencode(data), headers=headers)
     assert response.status == 303
     assert response['location'] == '/foo/Lipsum'
 
     response, content = _req('GET', '/foo/Lipsum', headers=headers)
     assert '<p>lorem ipsum\ndolor <em>sit</em> amet</p>' in content
+    assert '>hello</a>' in content
+    assert '>world</a>' in content
 
 
 def test_errors():
