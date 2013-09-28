@@ -2,6 +2,7 @@
 
 {% block links %}
 <link rel="stylesheet" href="/static/widearea.css">
+<link rel="stylesheet" href="/static/selectize.css">
 <link rel="stylesheet" href="/static/editor.css">
 {% endblock %}
 
@@ -14,12 +15,14 @@
 	<input type="hidden" name="wiki" value="{{ wiki_name }}">
 	<input type="hidden" name="title" value="{{ page_title}}">
 	<label>
-		tags: <input name="tags" value="{{ tagstr }}">
+		tags: <input type="text" name="tags" class="list" value="{{ tagstr }}">
 	</label>
 	<textarea name="text" data-widearea="enable">{{ contents }}</textarea>
 	<input type="submit" class="pure-button pure-button-primary">
 </form>
 
+<script src="/static/jquery.js"></script>
 <script src="/static/widearea.js"></script>
+<script src="/static/selectize.js"></script>
 <script src="/static/editor.js"></script>
 {% endblock %}
