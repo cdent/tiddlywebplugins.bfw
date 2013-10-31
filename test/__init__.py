@@ -7,6 +7,7 @@ import wsgi_intercept
 
 import mangler
 
+from StringIO import StringIO
 from urllib import urlencode
 from wsgi_intercept import httplib2_intercept
 
@@ -37,6 +38,28 @@ def make_instance():
     return tmpdir, store, admin_cookie
 
 
+def req(method, uri, body=None, **kwargs):
+    http = httplib2.Http()
+    http.follow_redirects = False
+    return http.request('http://example.org:8001%s' % uri, method=method,
+            body=body, **kwargs)
+
+
+class StreamCapture(object):
+
+    def __init__(self, stream='stdout'):
+        self.stream = stream
+
+    def __enter__(self):
+        self.original = getattr(sys, self.stream)
+        dummy = StringIO()
+        setattr(sys, self.stream, dummy)
+        return dummy
+
+    def __exit__(self, type, value, traceback):
+        setattr(sys, self.stream, self.original)
+
+
 def _initialize_app(tmpdir): # XXX: side-effecty and inscrutable
     instance_dir = os.path.join(tmpdir, 'instance')
 
@@ -62,10 +85,3 @@ def _initialize_app(tmpdir): # XXX: side-effecty and inscrutable
 
     httplib2_intercept.install()
     wsgi_intercept.add_wsgi_intercept('example.org', 8001, load_app)
-
-
-def req(method, uri, body=None, **kwargs):
-    http = httplib2.Http()
-    http.follow_redirects = False
-    return http.request('http://example.org:8001%s' % uri, method=method,
-            body=body, **kwargs)

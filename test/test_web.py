@@ -14,7 +14,7 @@ from tiddlyweb.config import config as CONFIG
 from tiddlyweb.manage import handle
 from tiddlyweb.web.util import make_cookie
 
-from . import make_instance, req as _req
+from . import make_instance, req as _req, StreamCapture
 
 
 def setup_module(module):
@@ -45,22 +45,18 @@ def teardown_module(module):
 
 def test_assetcopy(): # XXX: does not belong here
     target_dir = os.path.join(TMPDIR, 'static_assets')
-    # capture STDERR to avoid confusion -- XXX: might interefere with reporting - belongs into setup/teardown
-    stderr = sys.stderr
-    sys.stderr = StringIO()
+    # capture STDERR to avoid confusion
+    with StreamCapture('stderr') as stream:
+        with raises(SystemExit): # no directory provided
+            handle(['', 'assetcopy'])
 
-    with raises(SystemExit): # no directory provided
-        handle(['', 'assetcopy'])
-
-    handle(['', 'assetcopy', target_dir])
-
-    entries = os.listdir(target_dir)
-    assert 'favicon.ico' in entries
-
-    with raises(SystemExit): # directory already exists
         handle(['', 'assetcopy', target_dir])
 
-    sys.stderr = stderr # restore
+        entries = os.listdir(target_dir)
+        assert 'favicon.ico' in entries
+
+        with raises(SystemExit): # directory already exists
+            handle(['', 'assetcopy', target_dir])
 
 
 def test_integration(): # XXX: does not belong here
@@ -78,16 +74,11 @@ def test_integration(): # XXX: does not belong here
     response, content = _req('GET', '/tags/bar')
     assert response.status == 200
 
-    # capture STDOUT -- XXX: might interefere with reporting - belongs into setup/teardown
-    stdout = sys.stdout
-    sys.stdout = StringIO()
+    with StreamCapture('stdout') as stream:
+        handle(['', 'tags'])
 
-    handle(['', 'tags'])
-
-    sys.stdout.seek(0)
-    assert sys.stdout.read() == "foo\nbar\n"
-
-    sys.stdout = stdout # restore
+        stream.seek(0)
+        assert stream.read() == "foo\nbar\n"
 
 
 def test_root():
