@@ -1,50 +1,24 @@
 import sys
 import os
 import shutil
-import tempfile
-
-import httplib2
-import wsgi_intercept
 
 from StringIO import StringIO
 from urllib import urlencode
-from wsgi_intercept import httplib2_intercept
 from pytest import raises
 
 from tiddlyweb.model.tiddler import Tiddler
 from tiddlyweb.model.bag import Bag
-from tiddlyweb.model.user import User
 from tiddlyweb.model.policy import Policy
 from tiddlyweb.store import NoTiddlerError, NoBagError
 from tiddlyweb.config import config as CONFIG
-from tiddlyweb.util import merge_config
 from tiddlyweb.manage import handle
-from tiddlyweb.web.serve import load_app
 from tiddlyweb.web.util import make_cookie
-from tiddlywebplugins.utils import get_store
-from tiddlywebplugins.imaker import spawn
 
-from tiddlywebplugins.bfw import instance
-from tiddlywebplugins.bfw.config import config as init_config
+from . import make_instance, req as _req
 
 
 def setup_module(module):
-    module.TMPDIR = tempfile.mkdtemp()
-
-    _initialize_app(TMPDIR)
-    module.ADMIN_COOKIE = make_cookie('tiddlyweb_user', 'admin',
-            mac_key=CONFIG['secret'])
-
-    module.STORE = get_store(CONFIG)
-
-    # register admin user
-    data = {
-        'username': 'admin',
-        'password': 'secret',
-        'password_confirmation': 'secret'
-    }
-    response, content = _req('POST', '/register', urlencode(data),
-            headers={ 'Content-Type': 'application/x-www-form-urlencoded' })
+    module.TMPDIR, module.STORE, module.ADMIN_COOKIE = make_instance()
 
     bag = Bag('alpha')
     bag.policy = Policy(read=['admin'], write=['admin'], create=['admin'],
@@ -444,40 +418,6 @@ def test_static_assets():
     # TODO
     #response, content = _req('GET', '/favicon.ico')
     #assert response.status == 200
-
-
-def _initialize_app(tmpdir): # XXX: side-effecty and inscrutable
-    instance_dir = os.path.join(tmpdir, 'instance')
-
-    spawn(instance_dir, init_config, instance)
-    old_cwd = os.getcwd()
-    os.chdir(instance_dir)
-    # force loading of instance's `tiddlywebconfig.py`
-    while old_cwd in sys.path:
-        sys.path.remove(old_cwd)
-    sys.path.insert(0, os.getcwd())
-    merge_config(CONFIG, {}, reconfig=True) # XXX: should not be necessary!?
-
-    CONFIG['server_host'] = {
-        'scheme': 'http',
-        'host': 'example.org',
-        'port': '8001',
-    }
-    # TODO: test with server_prefix
-
-    # add symlink to templates -- XXX: hacky, should not be necessary!?
-    templates_path = instance.__file__.split(os.path.sep)[:-2] + ['templates']
-    os.symlink(os.path.sep.join(templates_path), 'templates')
-
-    httplib2_intercept.install()
-    wsgi_intercept.add_wsgi_intercept('example.org', 8001, load_app)
-
-
-def _req(method, uri, body=None, **kwargs):
-    http = httplib2.Http()
-    http.follow_redirects = False
-    return http.request('http://example.org:8001%s' % uri, method=method,
-            body=body, **kwargs)
 
 
 def _tiddler_exists(title, bag_name):
