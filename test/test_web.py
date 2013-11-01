@@ -1,6 +1,5 @@
 import sys
 import os
-import shutil
 
 from urllib import urlencode
 
@@ -16,7 +15,9 @@ from . import make_instance, req as _req, StreamCapture
 
 
 def setup_module(module):
-    module.TMPDIR, module.STORE, module.ADMIN_COOKIE = make_instance()
+    instance = make_instance()
+    module.STORE = instance["store"]
+    module.ADMIN_COOKIE = instance["admin_cookie"]
 
     bag = Bag('alpha')
     bag.policy = Policy(read=['admin'], write=['admin'], create=['admin'],
@@ -35,10 +36,6 @@ def setup_module(module):
     tiddler.text = 'lorem ipsum\ndolor *sit* amet'
     tiddler.type = 'text/x-markdown'
     STORE.put(tiddler)
-
-
-def teardown_module(module):
-    shutil.rmtree(TMPDIR)
 
 
 def test_root():

@@ -1,6 +1,6 @@
 import sys
 import os
-import tempfile
+import shutil
 
 import httplib2
 import wsgi_intercept
@@ -22,8 +22,18 @@ from tiddlywebplugins.bfw import instance
 from tiddlywebplugins.bfw.config import config as init_config
 
 
+INSTANCE = {}
+
+
 def make_instance():
-    tmpdir = tempfile.mkdtemp()
+    if len(INSTANCE): # multiple instances in a single process are unsupported
+        return INSTANCE
+
+    tmpdir = os.path.abspath("tmp")
+    if os.path.isdir(tmpdir):
+        shutil.rmtree(tmpdir)
+    os.mkdir(tmpdir)
+
     _initialize_app(tmpdir)
     store = get_store(CONFIG)
 
@@ -35,7 +45,10 @@ def make_instance():
     response, content = req('POST', '/register', urlencode(data),
             headers={ 'Content-Type': 'application/x-www-form-urlencoded' })
 
-    return tmpdir, store, admin_cookie
+    INSTANCE["tmpdir"] = tmpdir
+    INSTANCE["store"] = store
+    INSTANCE["admin_cookie"] = admin_cookie
+    return INSTANCE
 
 
 def req(method, uri, body=None, **kwargs):

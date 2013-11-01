@@ -11,11 +11,8 @@ from . import make_instance, req, StreamCapture
 
 
 def setup_module(module):
-    module.TMPDIR, module.STORE, _ = make_instance()
-
-
-def teardown_module(module):
-    shutil.rmtree(TMPDIR)
+    instance = make_instance()
+    module.STORE = instance["store"]
 
 
 def test_tagdex():
@@ -37,4 +34,6 @@ def test_tagdex():
         handle(['', 'tags'])
 
         stream.seek(0)
-        assert stream.read() == "foo\nbar\n"
+        tags = stream.read().splitlines()
+        assert "foo" in tags
+        assert "bar" in tags

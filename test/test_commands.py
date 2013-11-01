@@ -1,5 +1,4 @@
 import os
-import shutil
 
 from pytest import raises
 
@@ -9,11 +8,8 @@ from . import make_instance, req, StreamCapture
 
 
 def setup_module(module):
-    module.TMPDIR, _, _ = make_instance()
-
-
-def teardown_module(module):
-    shutil.rmtree(TMPDIR)
+    instance = make_instance()
+    module.TMPDIR = instance["tmpdir"]
 
 
 def test_assetcopy():
