@@ -4,7 +4,7 @@ from pytest import raises
 
 from tiddlyweb.manage import handle
 
-from . import make_instance, req, StreamCapture
+from . import make_instance, StreamCapture
 
 
 def setup_module(module):

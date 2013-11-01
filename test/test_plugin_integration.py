@@ -1,8 +1,3 @@
-import sys
-import shutil
-
-from StringIO import StringIO
-
 from tiddlyweb.model.tiddler import Tiddler
 from tiddlyweb.model.bag import Bag
 from tiddlyweb.manage import handle

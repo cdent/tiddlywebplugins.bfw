@@ -1,6 +1,3 @@
-import sys
-import os
-
 from urllib import urlencode
 
 from tiddlyweb.model.tiddler import Tiddler
@@ -8,10 +5,9 @@ from tiddlyweb.model.bag import Bag
 from tiddlyweb.model.policy import Policy
 from tiddlyweb.store import NoTiddlerError, NoBagError
 from tiddlyweb.config import config as CONFIG
-from tiddlyweb.manage import handle
 from tiddlyweb.web.util import make_cookie
 
-from . import make_instance, req as _req, StreamCapture
+from . import make_instance, req
 
 
 def setup_module(module):
@@ -39,7 +35,7 @@ def setup_module(module):
 
 
 def test_root():
-    response, content = _req('GET', '/')
+    response, content = req('GET', '/')
     assert response.status == 200
     assert response['content-type'] == 'text/html; charset=UTF-8'
 
@@ -50,20 +46,20 @@ def test_root():
 
     frontpage = Tiddler('index', 'meta')
     STORE.delete(frontpage) # XXX: side-effecty
-    response, content = _req('GET', '/')
+    response, content = req('GET', '/')
     assert response.status == 200
     assert '<a href="%s">BFW</a>' % uri not in content
 
-    response, content = _req('GET', '/', headers={ 'Cookie': ADMIN_COOKIE })
+    response, content = req('GET', '/', headers={ 'Cookie': ADMIN_COOKIE })
     assert response.status == 302
     assert response['location'] == '/~'
 
 
 def test_user_home():
-    response, content = _req('GET', '/~')
+    response, content = req('GET', '/~')
     assert response.status == 401
 
-    response, content = _req('GET', '/~', headers={ 'Cookie': ADMIN_COOKIE })
+    response, content = req('GET', '/~', headers={ 'Cookie': ADMIN_COOKIE })
     assert response.status == 200
     assert '<a href="/meta">meta</a>' in content
     assert '<a href="/admin">admin</a>' in content
@@ -75,44 +71,44 @@ def test_user_home():
     assert '<option value="alpha">' in content
     assert '<option value="bravo">' in content
 
-    response, content = _req('GET', '/~', headers={ 'Cookie': ADMIN_COOKIE })
+    response, content = req('GET', '/~', headers={ 'Cookie': ADMIN_COOKIE })
     assert response.status == 200
     assert "admin's personal wiki" in content
 
     index = Tiddler('index', 'admin')
     STORE.delete(index)
-    response, content = _req('GET', '/~', headers={ 'Cookie': ADMIN_COOKIE })
+    response, content = req('GET', '/~', headers={ 'Cookie': ADMIN_COOKIE })
     assert response.status == 200
 
-    response, content = _req('GET', '/', headers={ 'Cookie': ADMIN_COOKIE })
+    response, content = req('GET', '/', headers={ 'Cookie': ADMIN_COOKIE })
     assert response.status == 302
     assert response['location'] == '/~'
 
 
 def test_wiki_page():
-    response, content = _req('GET', '/alpha/index')
+    response, content = req('GET', '/alpha/index')
     assert response.status == 302
     assert '/challenge?tiddlyweb_redirect=%2Falpha%2Findex' in response['location']
     assert response['location'].endswith('/challenge?tiddlyweb_redirect=%s' %
             '%2Falpha%2Findex')
 
-    response, content = _req('GET', '/bravo/index')
+    response, content = req('GET', '/bravo/index')
     assert response.status == 200
     assert '<p>lorem ipsum\ndolor <em>sit</em> amet</p>' in content
     assert '<a href="/editor?page=bravo%2Findex">edit</a>' in content
 
-    response, content = _req('GET', '/bravo/HelloWorld')
+    response, content = req('GET', '/bravo/HelloWorld')
     assert response.status == 302
     assert response['location'] == '/editor?page=bravo%2FHelloWorld'
 
 
 def test_page_editor():
-    response, content = _req('GET', '/editor?page=alpha%2FHelloWorld')
+    response, content = req('GET', '/editor?page=alpha%2FHelloWorld')
     assert response.status == 302
     assert response['location'].endswith('/challenge?tiddlyweb_redirect=%s' %
             '%2Feditor%3Fpage%3Dalpha%252FHelloWorld')
 
-    response, content = _req('GET', '/editor?page=bravo%2FHelloWorld')
+    response, content = req('GET', '/editor?page=bravo%2FHelloWorld')
     assert response.status == 200
     assert '<form ' in content
     assert 'action="/pages"' in content
@@ -124,7 +120,7 @@ def test_page_editor():
     assert '<textarea name="text" data-widearea="enable"></textarea>' in content
     assert '"HelloWorld" does not exist yet in wiki "bravo"' in content
 
-    response, content = _req('GET', '/editor?page=bravo%2Findex')
+    response, content = req('GET', '/editor?page=bravo%2Findex')
     assert response.status == 200
     assert '<textarea name="text" data-widearea="enable">lorem ipsum\ndolor *sit* amet</textarea>' in content
     assert not 'does not exist yet' in content
@@ -140,7 +136,7 @@ def test_user_registration():
 
     assert not _bag_exists('fnd')
 
-    response, content = _req('POST', '/register', urlencode(data),
+    response, content = req('POST', '/register', urlencode(data),
             headers=headers)
     assert response.status == 303
     assert 'tiddlyweb_user="fnd:' in response['set-cookie']
@@ -153,16 +149,16 @@ def test_user_registration():
     _data = {}
     _data.update(data)
     _data['username'] = 'sandbox'
-    response, content = _req('POST', '/register', urlencode(_data),
+    response, content = req('POST', '/register', urlencode(_data),
             headers=headers)
     assert response.status == 409
 
-    response, content = _req('POST', '/register', urlencode(data),
+    response, content = req('POST', '/register', urlencode(data),
             headers=headers)
     assert response.status == 409 # already exists
 
     data['username'] = 'wikis'
-    response, content = _req('POST', '/register', urlencode(data),
+    response, content = req('POST', '/register', urlencode(data),
             headers=headers)
     assert response.status == 409 # blacklisted
 
@@ -172,10 +168,10 @@ def test_user_registration():
         'password': 'foo',
         'password_confirmation': 'foo'
     }
-    response, content = _req('POST', '/register', urlencode(data),
+    response, content = req('POST', '/register', urlencode(data),
             headers={ 'Content-Type': 'application/x-www-form-urlencoded' })
     cookie = make_cookie('tiddlyweb_user', 'dummy', mac_key=CONFIG['secret'])
-    response, content = _req('GET', '/~', headers={ 'Cookie': cookie })
+    response, content = req('GET', '/~', headers={ 'Cookie': cookie })
     assert response.status == 200
     assert "dummy's personal wiki" in content
 
@@ -186,13 +182,13 @@ def test_login():
         'user': 'fnd',
         'password': 'foo'
     }
-    response, content = _req('POST', '/challenge/cookie_form', urlencode(data),
+    response, content = req('POST', '/challenge/cookie_form', urlencode(data),
             headers=headers)
 
     assert response.status == 303
     assert 'tiddlyweb_user="fnd:' in response['set-cookie']
 
-    response, content = _req('POST', '/logout')
+    response, content = req('POST', '/logout')
 
     assert response.status == 303
     assert response['set-cookie'] == 'tiddlyweb_user=; Max-Age=0; Path=/'
@@ -208,39 +204,39 @@ def test_wiki_creation():
         'private': '1'
     }
 
-    response, content = _req('POST', '/wikis')
+    response, content = req('POST', '/wikis')
     assert response.status == 415
 
-    response, content = _req('POST', '/wikis', urlencode(data),
+    response, content = req('POST', '/wikis', urlencode(data),
             headers=default_headers)
     assert response.status == 401
     assert not _bag_exists('foo')
 
     headers = { 'Cookie': ADMIN_COOKIE }
     headers.update(default_headers)
-    response, content = _req('POST', '/wikis', urlencode(data), headers=headers)
+    response, content = req('POST', '/wikis', urlencode(data), headers=headers)
     assert response.status == 303
     assert response['location'] == '/foo'
     assert _bag_exists('foo')
 
-    response, content = _req('GET', '/foo', headers={ 'Cookie': ADMIN_COOKIE })
+    response, content = req('GET', '/foo', headers={ 'Cookie': ADMIN_COOKIE })
     assert response.status == 302
     assert response['location'] == '/foo/index'
 
-    response, content = _req('GET', '/bar')
+    response, content = req('GET', '/bar')
     assert response.status == 404
 
-    response, content = _req('GET', '/foo')
+    response, content = req('GET', '/foo')
     assert response.status == 302
     assert response['location'].endswith('/challenge?tiddlyweb_redirect=%2Ffoo')
 
     headers = { 'Cookie': ADMIN_COOKIE }
     headers.update(default_headers)
-    response, content = _req('POST', '/wikis', urlencode(data), headers=headers)
+    response, content = req('POST', '/wikis', urlencode(data), headers=headers)
     assert response.status == 409
 
     data['wiki'] = 'wikis'
-    response, content = _req('POST', '/wikis', urlencode(data), headers=headers)
+    response, content = req('POST', '/wikis', urlencode(data), headers=headers)
     assert response.status == 409
 
     assert not _bag_exists('bar')
@@ -248,12 +244,12 @@ def test_wiki_creation():
     data = { 'wiki': 'bar' }
     headers = { 'Cookie': ADMIN_COOKIE }
     headers.update(default_headers)
-    response, content = _req('POST', '/wikis', urlencode(data), headers=headers)
+    response, content = req('POST', '/wikis', urlencode(data), headers=headers)
     assert response.status == 303
     assert response['location'] == '/bar'
     assert _bag_exists('bar')
 
-    response, content = _req('GET', '/bar')
+    response, content = req('GET', '/bar')
     assert response.status == 302
     assert response['location'] == '/bar/index'
 
@@ -269,22 +265,22 @@ def test_page_creation_and_modification():
         'text': 'lorem ipsum'
     }
 
-    response, content = _req('POST', '/pages')
+    response, content = req('POST', '/pages')
     assert response.status == 415
 
-    response, content = _req('POST', '/pages', urlencode(data),
+    response, content = req('POST', '/pages', urlencode(data),
             headers=default_headers)
     assert response.status == 403
     assert not _tiddler_exists('Lipsum', 'foo')
 
     headers = { 'Cookie': ADMIN_COOKIE }
     headers.update(default_headers)
-    response, content = _req('POST', '/pages', urlencode(data), headers=headers)
+    response, content = req('POST', '/pages', urlencode(data), headers=headers)
     assert response.status == 303
     assert response['location'] == '/foo/Lipsum'
     assert _tiddler_exists('Lipsum', 'foo')
 
-    response, content = _req('GET', '/foo/Lipsum', headers=headers)
+    response, content = req('GET', '/foo/Lipsum', headers=headers)
     assert response.status == 200
     assert response['content-type'] == 'text/html; charset=UTF-8'
     assert '<p>lorem ipsum</p>' in content
@@ -294,33 +290,33 @@ def test_page_creation_and_modification():
 
     data['text'] = 'lorem ipsum\ndolor *sit* amet'
     data['tags'] = 'hello,world'
-    response, content = _req('POST', '/pages', urlencode(data), headers=headers)
+    response, content = req('POST', '/pages', urlencode(data), headers=headers)
     assert response.status == 303
     assert response['location'] == '/foo/Lipsum'
 
-    response, content = _req('GET', '/foo/Lipsum', headers=headers)
+    response, content = req('GET', '/foo/Lipsum', headers=headers)
     assert '<p>lorem ipsum\ndolor <em>sit</em> amet</p>' in content
     assert '>hello</a>' in content
     assert '>world</a>' in content
 
 
 def test_errors():
-    response, content = _req('GET', '/N/A')
+    response, content = req('GET', '/N/A')
     assert response.status == 404
     assert '<html>' in content
     assert 'not found' in content
 
-    response, content = _req('POST', '/')
+    response, content = req('POST', '/')
     assert response.status == 405
     assert '<html>' in content
     assert 'not allowed' in content
 
-    response, content = _req('GET', '/~')
+    response, content = req('GET', '/~')
     assert response.status == 401
     assert '<html>' in content
     assert 'unauthorized' in content
 
-    response, content = _req('POST', '/register')
+    response, content = req('POST', '/register')
     assert response.status == 415
     assert '<html>' in content
     assert 'unsupported' in content
@@ -331,7 +327,7 @@ def test_errors():
         'password_confirmation': 'baz'
     }
     headers = { 'Content-Type': 'application/x-www-form-urlencoded' }
-    response, content = _req('POST', '/register', urlencode(data),
+    response, content = req('POST', '/register', urlencode(data),
             headers=headers)
     assert response.status == 400
     assert '<html>' in content
@@ -343,7 +339,7 @@ def test_errors():
         'password_confirmation': 'foo'
     }
     headers = { 'Content-Type': 'application/x-www-form-urlencoded' }
-    response, content = _req('POST', '/register', urlencode(data),
+    response, content = req('POST', '/register', urlencode(data),
             headers=headers)
     assert response.status == 409
     assert '<html>' in content
@@ -351,20 +347,20 @@ def test_errors():
 
 
 def test_static_assets():
-    response, content = _req('GET', '/static')
+    response, content = req('GET', '/static')
     assert response.status == 404
 
-    response, content = _req('GET', '/static/../tiddlywebconfig.py')
+    response, content = req('GET', '/static/../tiddlywebconfig.py')
     assert response.status == 404
 
-    response, content = _req('GET', '/static/pure.css')
+    response, content = req('GET', '/static/pure.css')
     assert response.status == 200
 
-    response, content = _req('GET', '/static/favicon.ico')
+    response, content = req('GET', '/static/favicon.ico')
     assert response.status == 200
 
     # TODO
-    #response, content = _req('GET', '/favicon.ico')
+    #response, content = req('GET', '/favicon.ico')
     #assert response.status == 200
 
 
