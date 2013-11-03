@@ -8,12 +8,21 @@ from tiddlywebplugins.bfw import (__version__ as VERSION, __author__ as AUTHOR,
         __license__ as LICENSE, __doc__ as DESC)
 
 
+CLASSIFIERS = """
+Environment :: Web Environment
+Topic :: Internet :: WWW/HTTP :: WSGI :: Application
+License :: OSI Approved :: BSD License
+Operating System :: OS Independent
+Programming Language :: Python :: 2
+""".strip().splitlines()
+
 META = {
     'name': 'tiddlywebplugins.bfw',
     'url': 'https://github.com/FND/tiddlywebplugins.bfw',
     'version': VERSION,
     'description': 'Barely Functioning Wiki',
     'long_description': DESC.strip(),
+    'classifiers': CLASSIFIERS,
     'license': LICENSE,
     'author': AUTHOR,
     'author_email': '',
