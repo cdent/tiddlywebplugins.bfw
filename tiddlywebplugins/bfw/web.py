@@ -34,9 +34,9 @@ def ensure_form_submission(fn): # TODO: move elsewhere
 
 
 def frontpage(environ, start_response):
-    current_user = environ['tiddlyweb.usersign']['name']
+    username = environ['tiddlyweb.usersign']['name']
 
-    if current_user != 'GUEST': # auth'd
+    if username != 'GUEST': # auth'd
         raise HTTP302(_uri(environ, '~'))
     else: # unauth'd
         uris = {
@@ -56,8 +56,9 @@ def frontpage(environ, start_response):
 
 
 def user_home(environ, start_response):
-    current_user = environ['tiddlyweb.usersign']['name']
-    if current_user == 'GUEST':
+    current_user = environ['tiddlyweb.usersign']
+    username = current_user['name']
+    if username == 'GUEST':
         raise HTTP401('unauthorized')
 
     store = environ['tiddlyweb.store']
@@ -68,7 +69,7 @@ def user_home(environ, start_response):
             _, bag = _ensure_wiki_readable(environ, bag.name)
             uri = _uri(environ, bag.name)
             try:
-                bag.policy.allows(environ['tiddlyweb.usersign'], 'write')
+                bag.policy.allows(current_user, 'write')
                 writable = True
             except ForbiddenError, exc:
                 writable = False
@@ -76,7 +77,7 @@ def user_home(environ, start_response):
         except ForbiddenError, exc:
             pass
 
-    tiddler = Tiddler('index', current_user)
+    tiddler = Tiddler('index', username)
     try:
         tiddler = store.get(tiddler)
     except NoTiddlerError: # this should never occur
@@ -87,7 +88,7 @@ def user_home(environ, start_response):
         'create_page': _uri(environ, 'pages')
     }
     return _render_template(environ, start_response, 'user_home.html',
-            user=current_user, wikis=wikis, uris=uris,
+            user=username, wikis=wikis, uris=uris,
             contents=render_wikitext(tiddler, environ))
 
 
@@ -142,8 +143,8 @@ def editor(environ, start_response):
 
 @ensure_form_submission
 def create_wiki(environ, start_response):
-    current_user = environ['tiddlyweb.usersign']['name']
-    if current_user == 'GUEST':
+    username = environ['tiddlyweb.usersign']['name']
+    if username == 'GUEST':
         raise HTTP401('unauthorized')
 
     wiki_name = environ['tiddlyweb.query']['wiki'][0] # TODO: validate
@@ -152,7 +153,7 @@ def create_wiki(environ, start_response):
     if wiki_name in BLACKLIST:
         raise HTTP409('wiki name unavailable')
 
-    _create_wiki(environ['tiddlyweb.store'], wiki_name, current_user, private)
+    _create_wiki(environ['tiddlyweb.store'], wiki_name, username, private)
 
     wiki_uri = _uri(environ, wiki_name).encode('UTF-8') # XXX: should include host!?
     start_response('303 See Other', [('Location', wiki_uri)])
@@ -251,14 +252,14 @@ def _create_wiki(store, name, owner, private):
 
 
 def _ensure_wiki_readable(environ, wiki_name=None):
-    current_user = environ['tiddlyweb.usersign']['name']
+    current_user = environ['tiddlyweb.usersign']
     if not wiki_name: # XXX: bad API!?
         wiki_name = get_route_value(environ, 'wiki_name')
 
     store = environ['tiddlyweb.store']
     bag = _ensure_bag_exists(wiki_name, store)
 
-    bag.policy.allows(environ['tiddlyweb.usersign'], 'read')
+    bag.policy.allows(current_user, 'read')
 
     return wiki_name, bag
 
