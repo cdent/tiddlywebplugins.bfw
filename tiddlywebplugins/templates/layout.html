@@ -5,12 +5,16 @@
 	<meta charset="utf-8">
 	<title>{{ title }}</title>
 	<link rel="stylesheet" href="/static/pure.css">
-	<link rel="stylesheet" href="/static/main.css">
+	<link rel="stylesheet" href="/static/layout.css">
+	<link rel="stylesheet" href="/static/contents.css">
 	<link rel="shortcut icon" href="/static/favicon.ico">
 	{% block links %}{% endblock %}
 </head>
 
 <body>
+	<ul class="nav pure-menu pure-menu-open">
+	{% block nav %}{% endblock %}
+	</ul>
 	{% block body %}{% endblock %}
 </body>
 
