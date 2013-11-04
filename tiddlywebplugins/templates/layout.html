@@ -13,7 +13,11 @@
 
 <body>
 	<ul class="nav pure-menu pure-menu-open">
-	{% block nav %}{% endblock %}
+		{% for link in nav %}
+		<li{% if link.active %} class="pure-menu-selected"{% endif %}>
+			<a href="{{ link.uri }}">{{ link.label }}</a>
+		</li>
+		{% endfor %}
 	</ul>
 	{% block body %}{% endblock %}
 </body>

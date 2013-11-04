@@ -14,3 +14,11 @@ def ensure_form_submission(fn):
         return fn(environ, start_response)
 
     return wrapper
+
+
+class Link(object):
+
+    def __init__(self, uri, label, active=False):
+        self.uri = uri
+        self.label = label
+        self.active = active

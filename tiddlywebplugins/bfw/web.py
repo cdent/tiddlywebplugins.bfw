@@ -14,7 +14,7 @@ from tiddlyweb.web.util import get_route_value, make_cookie, encode_name
 from tiddlywebplugins.logout import logout as logout_handler
 from tiddlywebplugins.templates import get_template
 
-from .util import ensure_form_submission
+from .util import ensure_form_submission, Link
 
 
 BLACKLIST = ['bags', 'recipes', 'wikis', 'pages', '~', 'register', 'logout'] # XXX: too manual, hard to keep in sync
@@ -22,15 +22,11 @@ BLACKLIST = ['bags', 'recipes', 'wikis', 'pages', '~', 'register', 'logout'] # X
 
 def frontpage(environ, start_response):
     username = environ['tiddlyweb.usersign']['name']
+    dashboard = _uri(environ, '~')
 
     if username != 'GUEST': # auth'd
-        raise HTTP302(_uri(environ, '~'))
+        raise HTTP302(dashboard)
     else: # unauth'd
-        uris = {
-            'register': _uri(environ, 'register'),
-            'login': _uri(environ, 'challenge', 'cookie_form')
-        }
-
         tiddler = Tiddler('index', 'meta')
         store = environ['tiddlyweb.store']
         try:
@@ -38,8 +34,13 @@ def frontpage(environ, start_response):
         except NoTiddlerError: # this should never occur
             pass
 
+        uris = {
+            'register': _uri(environ, 'register'),
+            'login': _uri(environ, 'challenge', 'cookie_form')
+        }
+        nav = [Link(_uri(environ), 'home', True), Link(dashboard, 'dashboard')]
         return _render_template(environ, start_response, 'frontpage.html',
-                contents=render_wikitext(tiddler, environ), uris=uris)
+                contents=render_wikitext(tiddler, environ), nav=nav, uris=uris)
 
 
 def user_home(environ, start_response):
@@ -74,8 +75,10 @@ def user_home(environ, start_response):
         'create_wiki': _uri(environ, 'wikis'),
         'create_page': _uri(environ, 'pages')
     }
+    nav = [Link(_uri(environ), 'home'),
+            Link(_uri(environ, '~'), 'dashboard', True)]
     return _render_template(environ, start_response, 'user_home.html',
-            user=username, wikis=wikis, uris=uris,
+            user=username, wikis=wikis, nav=nav, uris=uris,
             contents=render_wikitext(tiddler, environ))
 
 
