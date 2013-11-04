@@ -1,7 +1,7 @@
 import os
 import mimetypes
 
-from httpexceptor import HTTP302, HTTP400, HTTP401, HTTP404, HTTP409, HTTP415
+from httpexceptor import HTTP302, HTTP400, HTTP401, HTTP404, HTTP409
 
 from tiddlyweb.model.tiddler import Tiddler
 from tiddlyweb.model.bag import Bag
@@ -14,23 +14,10 @@ from tiddlyweb.web.util import get_route_value, make_cookie, encode_name
 from tiddlywebplugins.logout import logout as logout_handler
 from tiddlywebplugins.templates import get_template
 
+from .util import ensure_form_submission
+
 
 BLACKLIST = ['bags', 'recipes', 'wikis', 'pages', '~', 'register', 'logout'] # XXX: too manual, hard to keep in sync
-
-
-def ensure_form_submission(fn): # TODO: move elsewhere
-    """
-    decorator to ensure the request was a form submission
-    """
-
-    def wrapper(environ, start_response):
-        content_type = environ.get('CONTENT_TYPE', '')
-        if not content_type.startswith('application/x-www-form-urlencoded'):
-            raise HTTP415('unsupported content type')
-
-        return fn(environ, start_response)
-
-    return wrapper
 
 
 def frontpage(environ, start_response):
