@@ -9,9 +9,9 @@ RESOURCES = {
     'wiki page': '%(wiki)s/%(page)s',
     'wiki index': '%(wiki)s/index', # required for links below
     'page editor': 'editor?page=%(wiki)s%%2F%(page)s',
-    'global activity': '/history',
-    'wiki activity': '/history/%(wiki)s',
-    'page history': '/history/%(wiki)s/%(page)s',
+    'global activity': 'history',
+    'wiki activity': 'history/%(wiki)s',
+    'page history': 'history/%(wiki)s/%(page)s',
     'help': 'help',
     'recent changes': lambda params: _recent_changes_uri(params),
     'wikis': 'wikis',
