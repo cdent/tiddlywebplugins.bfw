@@ -9,12 +9,13 @@ from tiddlyweb.model.user import User
 from tiddlyweb.model.policy import Policy, UserRequiredError, ForbiddenError
 from tiddlyweb.wikitext import render_wikitext
 from tiddlyweb.store import NoTiddlerError, NoBagError, NoUserError
-from tiddlyweb.web.util import get_route_value, make_cookie, encode_name
+from tiddlyweb.web.util import get_route_value, make_cookie
 
 from tiddlywebplugins.logout import logout as logout_handler
 from tiddlywebplugins.templates import get_template
 
-from .util import ensure_form_submission, Link
+from .routing import nav, uri
+from .util import ensure_form_submission
 
 
 BLACKLIST = ['bags', 'recipes', 'wikis', 'pages', '~', 'register', 'logout'] # XXX: too manual, hard to keep in sync
@@ -22,10 +23,9 @@ BLACKLIST = ['bags', 'recipes', 'wikis', 'pages', '~', 'register', 'logout'] # X
 
 def frontpage(environ, start_response):
     username = environ['tiddlyweb.usersign']['name']
-    dashboard = _uri(environ, '~')
 
     if username != 'GUEST': # auth'd
-        raise HTTP302(dashboard)
+        raise HTTP302(uri('dashboard', environ))
     else: # unauth'd
         tiddler = Tiddler('index', 'meta')
         store = environ['tiddlyweb.store']
@@ -35,12 +35,12 @@ def frontpage(environ, start_response):
             pass
 
         uris = {
-            'register': _uri(environ, 'register'),
-            'login': _uri(environ, 'challenge', 'cookie_form')
+            'register': uri('register', environ),
+            'login': uri('login', environ)
         }
-        nav = [Link(_uri(environ), 'home', True), Link(dashboard, 'dashboard')]
         return _render_template(environ, start_response, 'frontpage.html',
-                contents=render_wikitext(tiddler, environ), nav=nav, uris=uris)
+                contents=render_wikitext(tiddler, environ),
+                nav=nav('front page', environ), uris=uris)
 
 
 def user_home(environ, start_response):
@@ -55,13 +55,14 @@ def user_home(environ, start_response):
     for bag in store.list_bags():
         try:
             _, bag = _ensure_wiki_readable(environ, bag.name)
-            uri = _uri(environ, bag.name)
+            wiki_uri = uri('wiki index', environ, wiki=bag.name)
             try:
                 bag.policy.allows(current_user, 'write')
                 writable = True
             except ForbiddenError, exc:
                 writable = False
-            wikis.append({ 'name': bag.name, 'uri': uri, 'writable': writable })
+            wikis.append({ 'name': bag.name, 'uri': wiki_uri,
+                    'writable': writable })
         except ForbiddenError, exc:
             pass
 
@@ -72,19 +73,17 @@ def user_home(environ, start_response):
         pass
 
     uris = {
-        'create_wiki': _uri(environ, 'wikis'),
-        'create_page': _uri(environ, 'pages')
+        'create_wiki': uri('wikis', environ),
+        'create_page': uri('pages', environ)
     }
-    nav = [Link(_uri(environ), 'home'),
-            Link(_uri(environ, '~'), 'dashboard', True)]
     return _render_template(environ, start_response, 'user_home.html',
-            user=username, wikis=wikis, nav=nav, uris=uris,
-            contents=render_wikitext(tiddler, environ))
+            user=username, wikis=wikis, nav=nav('dashboard', environ),
+            uris=uris, contents=render_wikitext(tiddler, environ))
 
 
 def wiki_home(environ, start_response):
     wiki_name, _ = _ensure_wiki_readable(environ)
-    raise HTTP302(_uri(environ, wiki_name, 'index'))
+    raise HTTP302(uri('wiki index', environ, wiki=wiki_name))
 
 
 def wiki_page(environ, start_response):
@@ -95,22 +94,23 @@ def wiki_page(environ, start_response):
     try:
         tiddler = bag.store.get(tiddler)
     except NoTiddlerError:
-        raise HTTP302(_uri(environ, 'editor',
-                page='%s/%s' % (wiki_name, page_name)))
+        raise HTTP302(uri('page editor', environ, wiki=wiki_name,
+                page=page_name))
 
     title = wiki_name if page_name == 'index' else page_name # XXX: undesirable?
-    tags = [(tag, _uri(environ, 'tags', tag)) for tag in sorted(tiddler.tags)]
+    tags = [(tag, uri('tag', environ, tag=tag)) for tag in sorted(tiddler.tags)]
     uris = {
-        'edit': _uri(environ, 'editor', page='%s/%s' % (wiki_name, page_name)),
-        'source': _uri(environ, 'bags', wiki_name, 'tiddlers', page_name)
+        'edit': uri('page editor', environ, wiki=wiki_name, page=page_name),
+        'source': uri('tiddler', environ, bag=wiki_name, title=page_name)
     }
 
     return _render_template(environ, start_response, 'wiki_page.html',
             title=title, page_title=page_name, uris=uris, tags=tags,
+            nav=nav('wiki page', environ, wiki=wiki_name, page=page_name),
             contents=render_wikitext(tiddler, environ))
 
 
-def editor(environ, start_response):
+def page_editor(environ, start_response):
     page = environ['tiddlyweb.query']['page'][0] # TODO: guard against missing parameter
     wiki_name, page_name = page.split('/') # TODO: validate
     _, bag = _ensure_wiki_readable(environ, wiki_name)
@@ -123,10 +123,11 @@ def editor(environ, start_response):
         msg = '"%s" does not exist yet in wiki "%s"' % (page_name, wiki_name)
 
     uris = {
-        'put_page': _uri(environ, 'pages')
+        'put_page': uri('pages', environ)
     }
     return _render_template(environ, start_response, 'editor.html', uris=uris,
             title=page, wiki_name=wiki_name, page_title=page_name,
+            nav=nav('page editor', environ, wiki=wiki_name, page=page_name),
             tagstr=', '.join(tiddler.tags), contents=tiddler.text,
             notification=msg)
 
@@ -145,7 +146,7 @@ def create_wiki(environ, start_response):
 
     _create_wiki(environ['tiddlyweb.store'], wiki_name, username, private)
 
-    wiki_uri = _uri(environ, wiki_name).encode('UTF-8') # XXX: should include host!?
+    wiki_uri = uri('wiki index', environ, wiki=wiki_name).encode('UTF-8') # XXX: should include host!?
     start_response('303 See Other', [('Location', wiki_uri)])
     return ['']
 
@@ -169,7 +170,7 @@ def put_page(environ, start_response):
     tiddler.text = text
     store.put(tiddler)
 
-    page_uri = _uri(environ, wiki_name, title).encode('UTF-8') # XXX: should include host!?
+    page_uri = uri('wiki page', environ, wiki=wiki_name, page=title).encode('UTF-8') # XXX: should include host!?
     start_response('303 See Other', [('Location', page_uri)])
     return ['']
 
@@ -202,7 +203,7 @@ def register_user(environ, start_response):
     index.text = "Welcome to %s's personal wiki." % username
     store.put(index)
 
-    root_uri = _uri(environ, '')
+    root_uri = uri('front page', environ)
 
     cookie = make_cookie('tiddlyweb_user', user.usersign, path=root_uri,
             mac_key=environ['tiddlyweb.config']['secret'],
@@ -214,7 +215,7 @@ def register_user(environ, start_response):
 
 
 def logout(environ, start_response):
-    environ['tiddlyweb.query']['tiddlyweb_redirect'] = [_uri(environ, '')]
+    environ['tiddlyweb.query']['tiddlyweb_redirect'] = [uri('front page', environ)]
     return logout_handler(environ, start_response)
 
 
@@ -262,15 +263,3 @@ def _ensure_bag_exists(bag_name, store):
         raise HTTP404('wiki not found')
 
     return bag
-
-
-def _uri(environ, *segments, **query_params):
-    server_prefix = environ['tiddlyweb.config'].get('server_prefix', '')
-    uri = '/'.join([server_prefix] +
-            [encode_name(segment) for segment in segments])
-
-    if query_params:
-        uri += '?%s' % ';'.join('%s=%s' % (encode_name(key), encode_name(value))
-                for key, value in query_params.items())
-
-    return uri

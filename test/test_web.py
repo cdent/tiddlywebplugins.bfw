@@ -61,10 +61,10 @@ def test_user_home():
 
     response, content = req('GET', '/~', headers={ 'Cookie': ADMIN_COOKIE })
     assert response.status == 200
-    assert '<a href="/meta">meta</a>' in content
-    assert '<a href="/admin">admin</a>' in content
-    assert '<a href="/alpha">alpha</a>' in content
-    assert '<a href="/bravo">bravo</a>' in content
+    assert '<a href="/meta/index">meta</a>' in content
+    assert '<a href="/admin/index">admin</a>' in content
+    assert '<a href="/alpha/index">alpha</a>' in content
+    assert '<a href="/bravo/index">bravo</a>' in content
     assert not 'charlie' in content
     assert '<option value="meta">' not in content
     assert '<option value="admin">' in content
@@ -216,7 +216,7 @@ def test_wiki_creation():
     headers.update(default_headers)
     response, content = req('POST', '/wikis', urlencode(data), headers=headers)
     assert response.status == 303
-    assert response['location'] == '/foo'
+    assert response['location'] == '/foo/index'
     assert _bag_exists('foo')
 
     response, content = req('GET', '/foo', headers={ 'Cookie': ADMIN_COOKIE })
@@ -228,7 +228,7 @@ def test_wiki_creation():
 
     response, content = req('GET', '/foo')
     assert response.status == 302
-    assert response['location'].endswith('/challenge?tiddlyweb_redirect=%2Ffoo')
+    assert response['location'].endswith('/challenge?tiddlyweb_redirect=%2Ffoo%2Findex')
 
     headers = { 'Cookie': ADMIN_COOKIE }
     headers.update(default_headers)
@@ -246,7 +246,7 @@ def test_wiki_creation():
     headers.update(default_headers)
     response, content = req('POST', '/wikis', urlencode(data), headers=headers)
     assert response.status == 303
-    assert response['location'] == '/bar'
+    assert response['location'] == '/bar/index'
     assert _bag_exists('bar')
 
     response, content = req('GET', '/bar')
